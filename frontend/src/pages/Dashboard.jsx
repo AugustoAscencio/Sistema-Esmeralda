@@ -1,5 +1,6 @@
 /**
- * Dashboard v4 — Satellite image viewer, hover tooltips, high contrast, dark accent panels
+ * Dashboard v5 — SatelliteCarousel integration, auto-load images,
+ * geological analysis, hover tooltips, high contrast
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -10,101 +11,13 @@ import WeatherStrip from '../components/ui/WeatherStrip'
 import CreditCard from '../components/ui/CreditCard'
 import NDVITimeline from '../components/charts/NDVITimeline'
 import RainfallChart from '../components/charts/RainfallChart'
+import SatelliteCarousel from '../components/ui/SatelliteCarousel'
 
 function Tip({ children, text }) {
   return (
     <div className="tooltip-wrap">
       {children}
       <div className="tooltip-content">{text}</div>
-    </div>
-  )
-}
-
-function SatelliteViewer({ bbox }) {
-  const [view, setView] = useState('ndvi')
-  const [expanded, setExpanded] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [imgSrc, setImgSrc] = useState(null)
-  const [error, setError] = useState(false)
-
-  const loadImage = async (type) => {
-    setView(type); setLoading(true); setError(false)
-    try {
-      const ep = type === 'ndvi' ? 'ndvi-image' : 'true-color'
-      const res = await fetch(`http://localhost:8000/api/v1/parcela/${ep}?bbox=${bbox.join(',')}`)
-      if (!res.ok) throw new Error()
-      const blob = await res.blob()
-      setImgSrc(URL.createObjectURL(blob))
-    } catch {
-      setImgSrc(null); setError(true)
-    }
-    setLoading(false)
-  }
-
-  return (
-    <div className={expanded ? 'card-dark animate-scale' : 'card-dark'} style={{
-      position: expanded ? 'fixed' : 'relative',
-      inset: expanded ? '24px' : 'auto', zIndex: expanded ? 200 : 1,
-      display: 'flex', flexDirection: 'column', gap: '12px',
-      ...(expanded ? { borderRadius: 'var(--r-xl)' } : {}),
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h4 style={{ margin: 0 }}>Imagenes Satelitales</h4>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button className="btn btn-sm" onClick={() => loadImage('ndvi')}
-            style={{ background: view === 'ndvi' ? 'var(--emerald-600)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', fontSize: '0.7rem' }}>NDVI</button>
-          <button className="btn btn-sm" onClick={() => loadImage('truecolor')}
-            style={{ background: view === 'truecolor' ? 'var(--emerald-600)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', fontSize: '0.7rem' }}>Color Real</button>
-          <button className="btn btn-sm" onClick={() => setExpanded(!expanded)}
-            style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', fontSize: '0.7rem' }}>{expanded ? 'Cerrar' : 'Ampliar'}</button>
-        </div>
-      </div>
-      <div style={{
-        flex: expanded ? 1 : 'none', height: expanded ? 'auto' : '220px',
-        borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative',
-        background: '#0a2e1f',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {loading && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid var(--emerald-400)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite', margin: '0 auto 8px' }} />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--emerald-300)' }}>Descargando imagen Sentinel-2...</span>
-          </div>
-        )}
-        {imgSrc && !loading && (
-          <img src={imgSrc} alt={`Vista ${view}`} style={{
-            width: '100%', height: '100%', objectFit: 'contain',
-            animation: 'fadeIn 0.5s ease',
-          }} />
-        )}
-        {error && !loading && (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <p style={{ color: 'var(--emerald-300)', fontSize: '0.85rem', marginBottom: '8px' }}>Imagenes no disponibles sin backend Copernicus</p>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--emerald-500)' }}>Ejecuta el servidor con credenciales CDSE para ver imagenes reales</p>
-            <div style={{
-              marginTop: '16px', padding: '24px', borderRadius: 'var(--r-md)',
-              background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.1))',
-              border: '1px solid rgba(16,185,129,0.3)',
-            }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--emerald-200)', marginBottom: '4px' }}>REPRESENTACION SIMULADA</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '2px' }}>
-                {Array.from({ length: 64 }).map((_, i) => {
-                  const h = (i % 8) * 15 + Math.random() * 20 + 100
-                  return <div key={i} style={{ width: '100%', aspectRatio: '1', borderRadius: '2px', background: `hsl(${h}, 60%, ${30 + Math.random() * 30}%)`, opacity: 0.8 }} />
-                })}
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--emerald-400)', marginTop: '6px', textAlign: 'center' }}>Mosaico NDVI · {view === 'ndvi' ? 'Indice Vegetacion' : 'True Color'}</div>
-            </div>
-          </div>
-        )}
-        {!imgSrc && !loading && !error && (
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ color: 'var(--emerald-300)', fontSize: '0.85rem', marginBottom: '8px' }}>Haz clic en NDVI o Color Real para cargar</p>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--emerald-500)' }}>Imagenes del satelite Sentinel-2 Level-2A</p>
-          </div>
-        )}
-      </div>
-      {expanded && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: -1 }} onClick={() => setExpanded(false)} />}
     </div>
   )
 }
@@ -219,9 +132,11 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Satellite Image Viewer */}
+          {/* Satellite Carousel — auto-loads images */}
           {currentBbox && (
-            <div className="animate-in d2"><SatelliteViewer bbox={currentBbox} /></div>
+            <div className="animate-in d2">
+              <SatelliteCarousel bbox={currentBbox} autoLoad={true} />
+            </div>
           )}
 
           <div className="animate-in d3">

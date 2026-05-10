@@ -63,8 +63,8 @@ export default function ScoreSphere({ score = 0, size = 200 }) {
         <SphereScene score={score} />
       </Canvas>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: size * 0.2 + 'px', fontWeight: 800, color: c, lineHeight: 1 }}>{score}</span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: size * 0.06 + 'px', color: 'var(--text-muted)', marginTop: '3px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>resiliencia</span>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: size * 0.22 + 'px', fontWeight: 800, color: c, lineHeight: 1, textShadow: `0 0 12px ${c}44, 0 1px 2px rgba(0,0,0,0.15)` }}>{score}</span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: size * 0.08 + 'px', color: c, marginTop: '4px', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.12)' }}>resiliencia</span>
       </div>
     </div>
   )

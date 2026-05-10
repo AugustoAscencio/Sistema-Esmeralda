@@ -84,10 +84,22 @@ export default function FinancialPanel() {
   const [currency, setCurrency] = useState('USD')
   const [selectedCrops, setSelectedCrops] = useState(['maiz'])
   const [area, setArea] = useState(parcelaData?.area_ha || 2.5)
+  const [cropAreas, setCropAreas] = useState({ maiz: 100 }) // percentages
   const [results, setResults] = useState(null)
   const [droughtData, setDroughtData] = useState(null)
 
   useEffect(() => { if (parcelaData?.area_ha) setArea(parcelaData.area_ha) }, [parcelaData])
+
+  // Rebalance crop areas when selection changes
+  useEffect(() => {
+    if (selectedCrops.length === 0) { setCropAreas({}); return }
+    const equal = Math.round(100 / selectedCrops.length)
+    const newAreas = {}
+    selectedCrops.forEach((c, i) => {
+      newAreas[c] = i === selectedCrops.length - 1 ? 100 - equal * (selectedCrops.length - 1) : equal
+    })
+    setCropAreas(newAreas)
+  }, [selectedCrops.length])
 
   if (!analysisReady) {
     return (
@@ -105,19 +117,30 @@ export default function FinancialPanel() {
     setSelectedCrops(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])
   }
 
+  const updateCropArea = (key, pct) => {
+    const newAreas = { ...cropAreas, [key]: Math.max(0, Math.min(100, pct)) }
+    setCropAreas(newAreas)
+  }
+
+  const totalPct = Object.values(cropAreas).reduce((a, b) => a + b, 0)
+
   const calculatePlan = () => {
     const res = selectedCrops.map(key => {
       const c = CROPS_DATA[key]
-      const yieldKg = Math.round(c.yield_kg_ha * area * (1 + ndviAdj / 100))
+      const cropPct = (cropAreas[key] || 0) / 100
+      const cropArea = area * cropPct
+      const yieldKg = Math.round(c.yield_kg_ha * cropArea * (1 + ndviAdj / 100))
       const revenue = (yieldKg / 1000) * c.usd_per_ton
-      const cost = c.cost_ha * area
+      const cost = c.cost_ha * cropArea
       const net = revenue - cost
       return {
         crop: c.name, key, yield_kg: yieldKg, revenue_usd: Math.round(revenue),
         cost_usd: Math.round(cost), net_usd: Math.round(net),
-        roi: Math.round((net / cost) * 100),
+        roi: cost > 0 ? Math.round((net / cost) * 100) : 0,
         satellite_adj: Math.round(ndviAdj * 10) / 10,
         risk: net > cost * 0.3 ? 'BAJO' : net > 0 ? 'MEDIO' : 'ALTO',
+        area_ha: Math.round(cropArea * 100) / 100,
+        area_pct: cropAreas[key] || 0,
       }
     })
     setResults(res)
@@ -205,13 +228,51 @@ export default function FinancialPanel() {
                 }}>{c.name}</button>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'end' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'end', marginBottom: selectedCrops.length > 1 ? '16px' : '0' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Area (ha)</label>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Area total (ha)</label>
                 <input className="input" type="number" value={area} onChange={(e) => setArea(+e.target.value || 1)} style={{ width: '120px' }} min="0.1" step="0.5" />
               </div>
               <button className="btn btn-primary" onClick={calculatePlan} disabled={!selectedCrops.length}>Calcular Ganancia</button>
             </div>
+
+            {/* Per-crop area allocation */}
+            {selectedCrops.length > 1 && (
+              <div style={{ padding: '16px', background: 'var(--emerald-50)', borderRadius: 'var(--r-md)', border: '1.5px solid var(--emerald-200)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Distribucion del area por cultivo</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, color: totalPct === 100 ? 'var(--emerald-700)' : 'var(--orange)' }}>{totalPct}% / 100%</span>
+                </div>
+                {/* Distribution bar */}
+                <div style={{ display: 'flex', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '14px', border: '1px solid var(--emerald-300)' }}>
+                  {selectedCrops.map((key, i) => {
+                    const hues = [142, 160, 120, 80, 200, 30, 260, 320, 180, 100]
+                    return <div key={key} style={{ width: `${cropAreas[key] || 0}%`, background: `hsl(${hues[i % hues.length]}, 55%, 45%)`, transition: 'width 0.3s' }} />
+                  })}
+                </div>
+                {selectedCrops.map((key, i) => {
+                  const c = CROPS_DATA[key]
+                  const hues = [142, 160, 120, 80, 200, 30, 260, 320, 180, 100]
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: `hsl(${hues[i % hues.length]}, 55%, 45%)`, flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', minWidth: '65px' }}>{c.name}</span>
+                      <input type="range" min="0" max="100" value={cropAreas[key] || 0}
+                        onChange={(e) => updateCropArea(key, +e.target.value)}
+                        style={{ flex: 1, accentColor: 'var(--emerald-600)' }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--emerald-700)', minWidth: '50px', textAlign: 'right' }}>
+                        {cropAreas[key] || 0}% <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.6rem' }}>({(area * (cropAreas[key] || 0) / 100).toFixed(2)} ha)</span>
+                      </span>
+                    </div>
+                  )
+                })}
+                {totalPct !== 100 && (
+                  <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fff7ed', border: '1px solid #fbbf24', borderRadius: 'var(--r-sm)', fontSize: '0.75rem', color: '#92400e' }}>
+                    ⚠ La suma debe ser 100%. Actualmente: {totalPct}%
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {results && results.map((r, i) => (

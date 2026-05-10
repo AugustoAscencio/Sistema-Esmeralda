@@ -12,8 +12,10 @@ from datetime import datetime, timedelta
 
 TOKEN_URL    = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 PROCESS_URL  = "https://sh.dataspace.copernicus.eu/api/v1/process"
-CLIENT_ID    = os.getenv("CDSE_CLIENT_ID", "")
-CLIENT_SECRET = os.getenv("CDSE_CLIENT_SECRET", "")
+
+from config import CDSE_CLIENT_ID, CDSE_CLIENT_SECRET
+CLIENT_ID = CDSE_CLIENT_ID
+CLIENT_SECRET = CDSE_CLIENT_SECRET
 
 # ── Cache simple en memoria (TTL 1 hora) ──
 _token_cache = {"token": None, "expires": 0}
@@ -71,15 +73,24 @@ def _make_payload(bbox: list, evalscript: str, width=512, height=512,
     }
 
 
-async def _process_request(payload: dict, timeout: int = 30) -> bytes:
-    """Envía solicitud a la Process API y retorna bytes."""
+async def _process_request(payload: dict, timeout: int = 45) -> bytes:
+    """Envía solicitud a la Process API y retorna bytes con reintentos."""
     token = await _get_token()
-    async with httpx.AsyncClient(timeout=timeout) as c:
-        r = await c.post(PROCESS_URL, json=payload,
-                         headers={"Authorization": f"Bearer {token}",
-                                  "Content-Type": "application/json"})
-        r.raise_for_status()
-    return r.content
+    last_err = None
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as c:
+                r = await c.post(PROCESS_URL, json=payload,
+                                 headers={"Authorization": f"Bearer {token}",
+                                          "Content-Type": "application/json"})
+                r.raise_for_status()
+            return r.content
+        except Exception as e:
+            last_err = e
+            if attempt < 2:
+                import asyncio
+                await asyncio.sleep(1 * (attempt + 1))
+    raise last_err
 
 
 # ═══════════════════════════════════════════════════════
@@ -157,6 +168,85 @@ function evaluatePixel(s) {
 """
 
 
+# ═══════════════════════════════════════════════════════
+# SWIR False Color — estrés hídrico y estructura vegetal
+# ═══════════════════════════════════════════════════════
+
+EVALSCRIPT_SWIR = """
+//VERSION=3
+function setup() {
+  return { input: ["B12", "B8A", "B04", "dataMask"], output: { bands: 4 } };
+}
+function evaluatePixel(s) {
+  return [2.5*s.B12, 2.5*s.B8A, 2.5*s.B04, s.dataMask];
+}
+"""
+
+
+# ═══════════════════════════════════════════════════════
+# MNDWI — Modified Normalized Difference Water Index
+# Detecta cuerpos de agua y humedales
+# ═══════════════════════════════════════════════════════
+
+EVALSCRIPT_MNDWI = """
+//VERSION=3
+function setup() {
+  return { input: ["B03", "B11", "dataMask"], output: { bands: 4 } };
+}
+function evaluatePixel(s) {
+  let mndwi = (s.B03 - s.B11) / (s.B03 + s.B11 + 0.0001);
+  if (mndwi > 0.3)  return [0.0, 0.2, 0.8, s.dataMask];
+  if (mndwi > 0.1)  return [0.0, 0.5, 0.9, s.dataMask];
+  if (mndwi > 0.0)  return [0.3, 0.7, 0.6, s.dataMask];
+  if (mndwi > -0.2) return [0.5, 0.8, 0.3, s.dataMask];
+  return [0.7, 0.6, 0.3, s.dataMask];
+}
+"""
+
+
+# ═══════════════════════════════════════════════════════
+# EVI — Enhanced Vegetation Index
+# Mejor que NDVI en áreas de vegetación densa
+# ═══════════════════════════════════════════════════════
+
+EVALSCRIPT_EVI = """
+//VERSION=3
+function setup() {
+  return { input: ["B02", "B04", "B08", "dataMask"], output: { bands: 4 } };
+}
+function evaluatePixel(s) {
+  let evi = 2.5 * (s.B08 - s.B04) / (s.B08 + 6.0*s.B04 - 7.5*s.B02 + 1.0);
+  evi = Math.max(-1, Math.min(1, evi));
+  if (evi < 0)   return [0.6, 0.4, 0.2, s.dataMask];
+  if (evi < 0.2) return [0.8, 0.6, 0.2, s.dataMask];
+  if (evi < 0.4) return [0.6, 0.8, 0.2, s.dataMask];
+  if (evi < 0.6) return [0.2, 0.7, 0.1, s.dataMask];
+  return [0.0, 0.5, 0.0, s.dataMask];
+}
+"""
+
+
+# ═══════════════════════════════════════════════════════
+# Geological raw analysis — multi-index numeric output
+# ═══════════════════════════════════════════════════════
+
+EVALSCRIPT_GEO_RAW = """
+//VERSION=3
+function setup() {
+  return {
+    input: ["B02","B03","B04","B08","B11","B12","dataMask"],
+    output: { bands: 4, sampleType: "FLOAT32" }
+  };
+}
+function evaluatePixel(s) {
+  let ndvi = (s.B08 - s.B04) / (s.B08 + s.B04 + 0.0001);
+  let mndwi = (s.B03 - s.B11) / (s.B03 + s.B11 + 0.0001);
+  let bsi = ((s.B11 + s.B04) - (s.B08 + s.B02)) / ((s.B11 + s.B04) + (s.B08 + s.B02) + 0.0001);
+  return [ndvi, mndwi, bsi, s.dataMask];
+}
+"""
+
+
 async def fetch_ndvi_stats(bbox: list) -> dict:
     """Retorna estadísticas numéricas del NDVI (media, min, max, std)."""
     cache_key = f"ndvi_stats_{'_'.join(map(str, bbox))}"
@@ -186,6 +276,96 @@ async def fetch_ndvi_stats(bbox: list) -> dict:
         "ndvi_max": round(float(np.max(arr)), 3),
         "ndvi_std": round(float(np.std(arr)), 3),
         "coverage_pct": round(len(ndvi_vals) / n_pixels * 100, 1)
+    }
+    _data_cache[cache_key] = {"data": result, "t": time.time()}
+    return result
+
+
+async def fetch_swir_image(bbox: list, width=512, height=512) -> bytes:
+    """Retorna imagen PNG SWIR false color."""
+    cache_key = f"swir_img_{'_'.join(map(str, bbox))}_{width}_{height}"
+    if cache_key in _data_cache and time.time() - _data_cache[cache_key]["t"] < CACHE_TTL:
+        return _data_cache[cache_key]["data"]
+    payload = _make_payload(bbox, EVALSCRIPT_SWIR, width, height)
+    result = await _process_request(payload)
+    _data_cache[cache_key] = {"data": result, "t": time.time()}
+    return result
+
+
+async def fetch_mndwi_image(bbox: list, width=512, height=512) -> bytes:
+    """Retorna imagen PNG MNDWI (detección de humedales)."""
+    cache_key = f"mndwi_img_{'_'.join(map(str, bbox))}_{width}_{height}"
+    if cache_key in _data_cache and time.time() - _data_cache[cache_key]["t"] < CACHE_TTL:
+        return _data_cache[cache_key]["data"]
+    payload = _make_payload(bbox, EVALSCRIPT_MNDWI, width, height)
+    result = await _process_request(payload)
+    _data_cache[cache_key] = {"data": result, "t": time.time()}
+    return result
+
+
+async def fetch_evi_image(bbox: list, width=512, height=512) -> bytes:
+    """Retorna imagen PNG EVI (Enhanced Vegetation Index)."""
+    cache_key = f"evi_img_{'_'.join(map(str, bbox))}_{width}_{height}"
+    if cache_key in _data_cache and time.time() - _data_cache[cache_key]["t"] < CACHE_TTL:
+        return _data_cache[cache_key]["data"]
+    payload = _make_payload(bbox, EVALSCRIPT_EVI, width, height)
+    result = await _process_request(payload)
+    _data_cache[cache_key] = {"data": result, "t": time.time()}
+    return result
+
+
+async def fetch_geological_analysis(bbox: list) -> dict:
+    """Análisis geológico multi-índice: NDVI, MNDWI, BSI."""
+    cache_key = f"geo_{'_'.join(map(str, bbox))}"
+    if cache_key in _data_cache and time.time() - _data_cache[cache_key]["t"] < CACHE_TTL:
+        return _data_cache[cache_key]["data"]
+
+    payload = _make_payload(bbox, EVALSCRIPT_GEO_RAW, width=64, height=64,
+                            output_format="application/octet-stream")
+    raw = await _process_request(payload)
+
+    n_pixels = len(raw) // 16  # 4 bands x float32
+    if n_pixels == 0:
+        return {"ndvi_mean": 0, "mndwi_mean": 0, "bsi_mean": 0,
+                "wetland_pct": 0, "bare_soil_pct": 0, "vegetation_pct": 0,
+                "water_risk": "BAJO", "drought_risk": "BAJO"}
+
+    data = struct.unpack(f"{n_pixels * 4}f", raw)
+    ndvi_v, mndwi_v, bsi_v = [], [], []
+    for i in range(n_pixels):
+        mask = data[i * 4 + 3]
+        if mask > 0:
+            ndvi_v.append(data[i * 4])
+            mndwi_v.append(data[i * 4 + 1])
+            bsi_v.append(data[i * 4 + 2])
+
+    if not ndvi_v:
+        return {"ndvi_mean": 0, "mndwi_mean": 0, "bsi_mean": 0,
+                "wetland_pct": 0, "bare_soil_pct": 0, "vegetation_pct": 0,
+                "water_risk": "BAJO", "drought_risk": "BAJO"}
+
+    ndvi_a = np.array(ndvi_v)
+    mndwi_a = np.array(mndwi_v)
+    bsi_a = np.array(bsi_v)
+    total = len(ndvi_v)
+
+    wetland_pct = round(float(np.sum(mndwi_a > 0.1) / total * 100), 1)
+    bare_soil_pct = round(float(np.sum(bsi_a > 0.1) / total * 100), 1)
+    vegetation_pct = round(float(np.sum(ndvi_a > 0.3) / total * 100), 1)
+
+    mndwi_mean = round(float(np.mean(mndwi_a)), 3)
+    water_risk = "ALTO" if wetland_pct > 30 else "MEDIO" if wetland_pct > 10 else "BAJO"
+    drought_risk = "ALTO" if float(np.mean(ndvi_a)) < 0.2 else "MEDIO" if float(np.mean(ndvi_a)) < 0.35 else "BAJO"
+
+    result = {
+        "ndvi_mean": round(float(np.mean(ndvi_a)), 3),
+        "mndwi_mean": mndwi_mean,
+        "bsi_mean": round(float(np.mean(bsi_a)), 3),
+        "wetland_pct": wetland_pct,
+        "bare_soil_pct": bare_soil_pct,
+        "vegetation_pct": vegetation_pct,
+        "water_risk": water_risk,
+        "drought_risk": drought_risk,
     }
     _data_cache[cache_key] = {"data": result, "t": time.time()}
     return result

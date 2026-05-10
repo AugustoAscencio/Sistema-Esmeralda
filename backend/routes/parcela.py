@@ -211,3 +211,79 @@ async def true_color_image(bbox: str = Query(..., description="lon_min,lat_min,l
     except Exception as e:
         return JSONResponse(status_code=503,
                             content={"error": f"No se pudo obtener imagen: {str(e)[:200]}"})
+
+
+@router.get("/swir-image")
+async def swir_image(bbox: str = Query(..., description="lon_min,lat_min,lon_max,lat_max")):
+    """Retorna imagen PNG SWIR false color (estrés hídrico)."""
+    from utils.geo_utils import parse_bbox_string
+
+    try:
+        bbox_list = parse_bbox_string(bbox)
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+    try:
+        from services.sentinel_service import fetch_swir_image
+        png_bytes = await fetch_swir_image(bbox_list)
+        return Response(content=png_bytes, media_type="image/png")
+    except Exception as e:
+        return JSONResponse(status_code=503,
+                            content={"error": f"No se pudo obtener imagen SWIR: {str(e)[:200]}"})
+
+
+@router.get("/mndwi-image")
+async def mndwi_image(bbox: str = Query(..., description="lon_min,lat_min,lon_max,lat_max")):
+    """Retorna imagen PNG MNDWI (detección de humedales)."""
+    from utils.geo_utils import parse_bbox_string
+
+    try:
+        bbox_list = parse_bbox_string(bbox)
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+    try:
+        from services.sentinel_service import fetch_mndwi_image
+        png_bytes = await fetch_mndwi_image(bbox_list)
+        return Response(content=png_bytes, media_type="image/png")
+    except Exception as e:
+        return JSONResponse(status_code=503,
+                            content={"error": f"No se pudo obtener imagen MNDWI: {str(e)[:200]}"})
+
+
+@router.get("/evi-image")
+async def evi_image(bbox: str = Query(..., description="lon_min,lat_min,lon_max,lat_max")):
+    """Retorna imagen PNG EVI (Enhanced Vegetation Index)."""
+    from utils.geo_utils import parse_bbox_string
+
+    try:
+        bbox_list = parse_bbox_string(bbox)
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+    try:
+        from services.sentinel_service import fetch_evi_image
+        png_bytes = await fetch_evi_image(bbox_list)
+        return Response(content=png_bytes, media_type="image/png")
+    except Exception as e:
+        return JSONResponse(status_code=503,
+                            content={"error": f"No se pudo obtener imagen EVI: {str(e)[:200]}"})
+
+
+@router.get("/geological-analysis")
+async def geological_analysis(bbox: str = Query(..., description="lon_min,lat_min,lon_max,lat_max")):
+    """Análisis geológico multi-índice: NDVI, MNDWI, BSI."""
+    from utils.geo_utils import parse_bbox_string
+
+    try:
+        bbox_list = parse_bbox_string(bbox)
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+    try:
+        from services.sentinel_service import fetch_geological_analysis
+        result = await fetch_geological_analysis(bbox_list)
+        return result
+    except Exception as e:
+        return JSONResponse(status_code=503,
+                            content={"error": f"No se pudo realizar análisis geológico: {str(e)[:200]}"})
