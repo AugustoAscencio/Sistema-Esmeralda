@@ -1,152 +1,58 @@
-/**
- * Education.jsx — Módulo educativo con lecciones interactivas
- */
-
 import { useState } from 'react'
 
 const MODULES = [
-  {
-    id: 'ndvi', icon: '🌿', title: '¿Qué es el NDVI?',
-    content: `El NDVI (Índice de Vegetación de Diferencia Normalizada) es como un "termómetro" de la salud de tu cultivo, pero medido desde el espacio.
-
-Los satélites Sentinel-2 de la Agencia Espacial Europea capturan luz que tus ojos no pueden ver (infrarroja). Las plantas sanas reflejan MUCHA luz infrarroja. Las plantas enfermas o secas reflejan poca.
-
-**Cómo leer tu NDVI:**
-• 0.6 - 1.0 → 🟢 Excelente. Tu cultivo está fuerte y saludable.
-• 0.4 - 0.6 → 🟡 Bueno. Condiciones aceptables, pero vigilar.
-• 0.2 - 0.4 → 🟠 Alerta. Estrés hídrico o nutricional. Actuar pronto.
-• 0.0 - 0.2 → 🔴 Crítico. Suelo desnudo o vegetación muy dañada.
-
-**Fórmula:** NDVI = (Infrarrojo - Rojo) / (Infrarrojo + Rojo)`,
-    quiz: [
-      { q: '¿Un NDVI de 0.7 significa que tu cultivo está...?', opts: ['Enfermo', 'Muerto', 'Saludable'], answer: 2 },
-      { q: '¿Qué satélite mide el NDVI?', opts: ['GPS', 'Sentinel-2', 'WhatsApp'], answer: 1 },
-      { q: '¿Qué tipo de luz usan?', opts: ['Infrarroja', 'Ultravioleta', 'Visible'], answer: 0 },
-    ]
-  },
-  {
-    id: 'moisture', icon: '💧', title: '¿Qué es la humedad del suelo?',
-    content: `La humedad del suelo indica cuánta agua tiene disponible tu cultivo en la tierra. Se mide con radar desde el satélite Sentinel-1.
-
-A diferencia de Sentinel-2 que necesita cielos despejados, Sentinel-1 usa radar (SAR) que atraviesa nubes y funciona de noche. Perfecto para épocas lluviosas.
-
-**Niveles de humedad:**
-• 60-100% → 💧 Húmedo. Buen nivel de agua.
-• 30-60% → 🟡 Moderado. Aceptable para la mayoría de cultivos.
-• 10-30% → 🟠 Seco. Considerar riego adicional.
-• 0-10% → 🔴 Crítico. Riesgo de pérdida del cultivo.
-
-**Consejo práctico:** Si la humedad baja de 25% y no hay lluvia prevista en 7 días, es momento de regar o solicitar asistencia.`,
-    quiz: [
-      { q: '¿Qué satélite mide la humedad del suelo?', opts: ['Sentinel-1', 'Sentinel-2', 'Hubble'], answer: 0 },
-      { q: '¿Sentinel-1 funciona con nubes?', opts: ['No', 'Sí', 'Solo de día'], answer: 1 },
-      { q: '¿Humedad del suelo al 15% es...?', opts: ['Normal', 'Preocupante', 'Excelente'], answer: 1 },
-    ]
-  },
-  {
-    id: 'drought', icon: '🏜️', title: '¿Cómo protegerse de la sequía?',
-    content: `La sequía es la amenaza más grande para los pequeños agricultores. Pero con datos del satélite, puedes prepararte ANTES de que llegue.
-
-**Señales tempranas (el satélite te avisa):**
-• NDVI bajando semana a semana
-• Humedad del suelo cayendo bajo 30%
-• Pronóstico sin lluvia por más de 7 días
-• Temperatura máxima sobre 38°C constante
-
-**Acciones concretas:**
-1. Riego de emergencia si tienes acceso a agua
-2. Mulching (cobertura del suelo) para retener humedad
-3. Reducir área sembrada para concentrar agua
-4. Solicitar microcrédito de emergencia antes de perder el cultivo
-5. Considerar cultivos más resistentes a la sequía (sorgo, yuca)`,
-    quiz: [
-      { q: '¿Cuál es señal temprana de sequía?', opts: ['NDVI subiendo', 'NDVI bajando', 'Mucha lluvia'], answer: 1 },
-      { q: '¿El mulching sirve para...?', opts: ['Decorar', 'Retener humedad', 'Espantar pájaros'], answer: 1 },
-      { q: '¿Cuándo pedir microcrédito?', opts: ['Cuando ya perdí todo', 'Antes de perder', 'Nunca'], answer: 1 },
-    ]
-  },
-  {
-    id: 'credit', icon: '💳', title: '¿Qué es el microcrédito paramétrico?',
-    content: `Un microcrédito paramétrico es un préstamo que se activa automáticamente cuando ciertos datos medibles (parámetros) indican que lo necesitas.
-
-En Esmeralda, los parámetros son satelitales:
-• Si tu NDVI cae debajo de un umbral → se activa la opción de crédito
-• Si la humedad del suelo es crítica → el monto disponible aumenta
-• Tu Score de Resiliencia determina la tasa de interés
-
-**Ventajas sobre el crédito tradicional:**
-• No necesitas ir al banco
-• No necesitas papeleo complicado
-• El satélite es tu "garantía" — los datos son públicos y verificables
-• La decisión es rápida: el algoritmo calcula en segundos
-• Las tasas son justas porque el riesgo se mide objetivamente`,
-    quiz: [
-      { q: '¿Quién decide si recibes crédito?', opts: ['Un funcionario', 'El algoritmo con datos satelitales', 'La suerte'], answer: 1 },
-      { q: '¿Qué sirve como "garantía"?', opts: ['Tu casa', 'Datos del satélite', 'Nada'], answer: 1 },
-      { q: '¿El crédito paramétrico necesita...?', opts: ['Mucho papeleo', 'Datos medibles', 'Conexiones'], answer: 1 },
-    ]
-  },
-  {
-    id: 'score', icon: '📊', title: '¿Cómo usar el Score de Resiliencia?',
-    content: `Tu Score de Resiliencia es un número de 0 a 100 que resume la salud financiera y agronómica de tu parcela.
-
-**Componentes del Score:**
-• 🌿 Salud del cultivo (NDVI): hasta 40 puntos
-• 📊 Estabilidad (variación NDVI): hasta 25 puntos
-• 💧 Agua disponible: hasta 20 puntos
-• 🌡️ Riesgo climático: hasta 15 puntos
-
-**Cómo usarlo con el banco:**
-• 75-100 → EXCELENTE: Crédito aprobado con las mejores tasas
-• 55-74 → BUENO: Crédito condicional, tasas moderadas
-• 35-54 → MODERADO: Necesitas garantía adicional
-• 0-34 → ALTO RIESGO: Buscar asistencia antes de crédito
-
-Puedes mostrar tu Score al banco como evidencia objetiva del estado de tu campo.`,
-    quiz: [
-      { q: '¿Cuántos componentes tiene el Score?', opts: ['2', '4', '10'], answer: 1 },
-      { q: '¿Un score de 80 significa...?', opts: ['Peligro', 'Excelente', 'Regular'], answer: 1 },
-      { q: '¿El componente con más peso es...?', opts: ['Clima', 'Salud del cultivo', 'Estabilidad'], answer: 1 },
-    ]
-  },
+  { id: 'ndvi', title: 'Que es el NDVI?', summary: 'Mide la salud de tus cultivos desde el espacio', content: `El NDVI (Indice de Vegetacion de Diferencia Normalizada) es como un "termometro" de la salud de tu cultivo, medido desde el espacio.\n\nLos satelites Sentinel-2 capturan luz infrarroja. Las plantas sanas reflejan MUCHA luz infrarroja. Las enfermas reflejan poca.\n\nComo leer tu NDVI:\n0.6 - 1.0: Excelente. Cultivo fuerte y saludable.\n0.4 - 0.6: Bueno. Condiciones aceptables.\n0.2 - 0.4: Alerta. Estres hidrico o nutricional.\n0.0 - 0.2: Critico. Suelo desnudo o vegetacion danada.`,
+    quiz: [{ q: 'Un NDVI de 0.7 significa que tu cultivo esta...?', opts: ['Enfermo', 'Muerto', 'Saludable'], answer: 2 }, { q: 'Que satelite mide el NDVI?', opts: ['GPS', 'Sentinel-2', 'WhatsApp'], answer: 1 }] },
+  { id: 'moisture', title: 'Que es la humedad del suelo?', summary: 'El radar ve el agua bajo la superficie', content: `La humedad del suelo indica cuanta agua tiene disponible tu cultivo. Se mide con radar desde Sentinel-1.\n\nA diferencia de Sentinel-2, Sentinel-1 usa radar (SAR) que atraviesa nubes y funciona de noche.\n\nNiveles:\n60-100%: Humedo. Buen nivel.\n30-60%: Moderado. Aceptable.\n10-30%: Seco. Considerar riego.\n0-10%: Critico. Riesgo de perdida.`,
+    quiz: [{ q: 'Que satelite mide la humedad?', opts: ['Sentinel-1', 'Sentinel-2', 'Hubble'], answer: 0 }, { q: 'Funciona con nubes?', opts: ['No', 'Si', 'Solo de dia'], answer: 1 }] },
+  { id: 'drought', title: 'Como protegerse de la sequia?', summary: 'Prepararse antes con datos satelitales', content: `La sequia es la amenaza mas grande. Con datos satelitales puedes prepararte ANTES.\n\nSenales tempranas:\n- NDVI bajando semana a semana\n- Humedad cayendo bajo 30%\n- Sin lluvia por mas de 7 dias\n- Temperatura sobre 38C constante\n\nAcciones concretas:\n1. Riego de emergencia\n2. Mulching para retener humedad\n3. Reducir area sembrada\n4. Solicitar microcredito de emergencia\n5. Considerar cultivos resistentes (sorgo, yuca)`,
+    quiz: [{ q: 'Senal temprana de sequia?', opts: ['NDVI subiendo', 'NDVI bajando', 'Mucha lluvia'], answer: 1 }, { q: 'El mulching sirve para...?', opts: ['Decorar', 'Retener humedad', 'Espantar pajaros'], answer: 1 }] },
+  { id: 'credit', title: 'Que es el microcredito parametrico?', summary: 'Credito automatico basado en datos', content: `Un microcredito parametrico se activa automaticamente cuando datos medibles indican que lo necesitas.\n\nEn Esmeralda los parametros son satelitales:\n- Si tu NDVI cae: se activa credito\n- Si la humedad es critica: el monto aumenta\n- Tu Score determina la tasa de interes\n\nVentajas:\n- No necesitas ir al banco\n- Sin papeleo complicado\n- El satelite es tu "garantia"\n- Decision rapida\n- Tasas justas basadas en datos objetivos`,
+    quiz: [{ q: 'Quien decide si recibes credito?', opts: ['Un funcionario', 'El algoritmo', 'La suerte'], answer: 1 }, { q: 'Que sirve como garantia?', opts: ['Tu casa', 'Datos satelitales', 'Nada'], answer: 1 }] },
+  { id: 'score', title: 'Como usar el Score de Resiliencia?', summary: 'Tu calificacion del 0 al 100', content: `Tu Score va de 0 a 100.\n\nComponentes:\n- Salud del cultivo (NDVI): hasta 40 pts\n- Estabilidad: hasta 25 pts\n- Agua disponible: hasta 20 pts\n- Riesgo climatico: hasta 15 pts\n\nCon el banco:\n75-100: Excelente. Mejores tasas.\n55-74: Bueno. Tasas moderadas.\n35-54: Moderado. Garantia adicional.\n0-34: Alto riesgo. Buscar asistencia.`,
+    quiz: [{ q: 'Cuantos componentes tiene?', opts: ['2', '4', '10'], answer: 1 }, { q: 'Score de 80 significa...?', opts: ['Peligro', 'Excelente', 'Regular'], answer: 1 }] },
 ]
 
-function QuizSection({ quiz }) {
+function Quiz({ quiz }) {
   const [answers, setAnswers] = useState({})
-  const [submitted, setSubmitted] = useState(false)
-
-  const handleAnswer = (qi, oi) => { if (!submitted) setAnswers({ ...answers, [qi]: oi }) }
-  const score = submitted ? Object.keys(answers).filter((qi) => answers[qi] === quiz[parseInt(qi)].answer).length : 0
-
+  const [done, setDone] = useState(false)
+  const score = done ? Object.keys(answers).filter((qi) => answers[qi] === quiz[parseInt(qi)].answer).length : 0
   return (
-    <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(10, 26, 18, 0.6)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
-      <h5 className="text-display" style={{ fontSize: '0.9rem', marginBottom: '12px' }}>🧠 Quiz rápido</h5>
+    <div style={{ marginTop: '20px', padding: '22px', background: 'linear-gradient(135deg, var(--emerald-50), var(--bg-elevated))', borderRadius: 'var(--r-md)', border: '2px solid var(--emerald-300)' }}>
+      <h5 style={{ fontSize: '0.9rem', marginBottom: '16px', color: 'var(--emerald-800)' }}>Evaluacion rapida</h5>
       {quiz.map((q, qi) => (
-        <div key={qi} style={{ marginBottom: '14px' }}>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '8px' }}>{q.q}</p>
+        <div key={qi} style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 600 }}>{q.q}</p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {q.opts.map((opt, oi) => {
-              const selected = answers[qi] === oi
-              const correct = submitted && oi === q.answer
-              const wrong = submitted && selected && oi !== q.answer
+              const sel = answers[qi] === oi
+              const correct = done && oi === q.answer
+              const wrong = done && sel && oi !== q.answer
               return (
-                <button key={oi} onClick={() => handleAnswer(qi, oi)} style={{
-                  padding: '6px 14px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)', cursor: submitted ? 'default' : 'pointer',
-                  background: correct ? 'rgba(16,180,108,0.2)' : wrong ? 'rgba(240,64,64,0.2)' : selected ? 'rgba(16,180,108,0.1)' : 'transparent',
-                  border: `1px solid ${correct ? 'var(--esmeralda-gem)' : wrong ? 'var(--alert-red)' : selected ? 'var(--esmeralda-gem)' : 'var(--esmeralda-mid)'}`,
-                  color: correct ? 'var(--esmeralda-bright)' : wrong ? 'var(--alert-red)' : 'var(--text-secondary)',
-                  fontFamily: 'var(--font-body)', transition: 'all 0.2s',
+                <button key={oi} onClick={() => !done && setAnswers({ ...answers, [qi]: oi })} style={{
+                  padding: '8px 18px', fontSize: '0.82rem', borderRadius: 'var(--r-md)', cursor: done ? 'default' : 'pointer',
+                  background: correct ? 'var(--emerald-200)' : wrong ? '#fee2e2' : sel ? 'var(--emerald-100)' : '#fff',
+                  border: `2px solid ${correct ? 'var(--emerald-500)' : wrong ? 'var(--red)' : sel ? 'var(--emerald-400)' : 'var(--emerald-200)'}`,
+                  color: correct ? 'var(--emerald-800)' : wrong ? '#991b1b' : sel ? 'var(--emerald-700)' : 'var(--text-secondary)',
+                  fontFamily: 'var(--font-sans)', fontWeight: 600, transition: 'all 0.25s',
+                  boxShadow: sel ? 'var(--shadow-sm)' : 'none',
                 }}>{opt}</button>
               )
             })}
           </div>
         </div>
       ))}
-      {!submitted ? (
-        <button className="btn btn-primary" onClick={() => setSubmitted(true)} style={{ marginTop: '8px' }}>Verificar</button>
+      {!done ? (
+        <button className="btn btn-primary btn-sm" onClick={() => setDone(true)} style={{ marginTop: '4px' }}>Verificar respuestas</button>
       ) : (
-        <div className="text-mono" style={{ fontSize: '0.8rem', color: score === quiz.length ? 'var(--esmeralda-bright)' : 'var(--alert-orange)' }}>
-          {score === quiz.length ? '🎉 ¡Perfecto!' : `${score}/${quiz.length} correctas`}
+        <div style={{
+          padding: '12px 16px', borderRadius: 'var(--r-sm)', marginTop: '8px',
+          background: score === quiz.length ? 'var(--emerald-100)' : '#fff7ed',
+          border: `2px solid ${score === quiz.length ? 'var(--emerald-400)' : '#fb923c'}`,
+          fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 700,
+          color: score === quiz.length ? 'var(--emerald-800)' : '#9a3412',
+        }}>
+          {score === quiz.length ? 'Perfecto. Dominas este tema.' : `${score}/${quiz.length} correctas. Intenta de nuevo.`}
         </div>
       )}
     </div>
@@ -154,33 +60,40 @@ function QuizSection({ quiz }) {
 }
 
 export default function Education() {
-  const [openModule, setOpenModule] = useState(null)
-
+  const [open, setOpen] = useState(null)
   return (
-    <div className="page">
-      <h1 style={{ marginBottom: '8px' }}>📚 Educación Agrícola</h1>
-      <p className="text-secondary" style={{ marginBottom: '24px', fontSize: '0.95rem' }}>
-        Aprende a usar los datos del satélite para proteger tu campo
-      </p>
-
+    <div className="page" style={{ maxWidth: '860px' }}>
+      <div className="card-dark animate-in" style={{ padding: '24px', marginBottom: '24px' }}>
+        <h1 style={{ marginBottom: '6px', color: '#fff' }}>Educacion Agricola</h1>
+        <p style={{ color: 'var(--emerald-300)', fontSize: '0.9rem', margin: 0 }}>Aprende a interpretar datos satelitales para tomar mejores decisiones en tu finca.</p>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {MODULES.map((mod) => (
-          <div key={mod.id} className="card card-glow" style={{ cursor: 'pointer', transition: 'all 0.3s' }}
-            onClick={() => setOpenModule(openModule === mod.id ? null : mod.id)}>
+        {MODULES.map((mod, idx) => (
+          <div key={mod.id} className={`card animate-in d${Math.min(idx + 1, 5)}`}
+            style={{ cursor: 'pointer', padding: '20px', borderLeft: open === mod.id ? '5px solid var(--emerald-500)' : '5px solid var(--emerald-200)' }}
+            onClick={() => setOpen(open === mod.id ? null : mod.id)}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '28px' }}>{mod.icon}</span>
-                <h3 className="text-display" style={{ fontSize: '1.05rem', margin: 0 }}>{mod.title}</h3>
-              </div>
-              <span style={{ color: 'var(--text-muted)', fontSize: '20px', transition: 'transform 0.3s', transform: openModule === mod.id ? 'rotate(180deg)' : 'none' }}>▾</span>
-            </div>
-
-            {openModule === mod.id && (
-              <div className="animate-fade-in" style={{ marginTop: '16px' }}>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                  {mod.content}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  background: open === mod.id ? 'var(--emerald-600)' : 'var(--emerald-100)',
+                  border: `2px solid ${open === mod.id ? 'var(--emerald-600)' : 'var(--emerald-300)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
+                  color: open === mod.id ? '#fff' : 'var(--emerald-700)',
+                  fontWeight: 700, transition: 'all 0.3s',
+                }}>0{idx + 1}</div>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', margin: 0 }}>{mod.title}</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>{mod.summary}</p>
                 </div>
-                <QuizSection quiz={mod.quiz} />
+              </div>
+              <span style={{ color: 'var(--emerald-500)', fontSize: '16px', transition: 'transform 0.3s', transform: open === mod.id ? 'rotate(180deg)' : 'none' }}>&#9660;</span>
+            </div>
+            {open === mod.id && (
+              <div className="animate-slide" onClick={(e) => e.stopPropagation()} style={{ marginTop: '20px', paddingTop: '18px', borderTop: '2px solid var(--emerald-200)' }}>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{mod.content}</div>
+                <Quiz quiz={mod.quiz} />
               </div>
             )}
           </div>

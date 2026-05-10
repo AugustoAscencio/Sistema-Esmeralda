@@ -1,46 +1,37 @@
 /**
- * Paleta Esmeralda exportada como constantes JS
- * Para uso en Three.js, Recharts y lógica de colores
+ * Paleta Esmeralda v3 — White + Emerald
  */
 
 export const COLORS = {
-  // Principales
-  deep:    '#0a1a12',
-  dark:    '#0f2417',
-  mid:     '#1a3d26',
-  gem:     '#10b46c',
-  bright:  '#1de98b',
-  pale:    '#a3f5cf',
-
-  // Alertas
-  red:     '#f04040',
-  orange:  '#f59e0b',
-  yellow:  '#fde047',
-
-  // Texto
-  textPrimary:   '#e8f5ee',
-  textSecondary: '#8ab49a',
-  textMuted:     '#4a6b55',
-
-  // Extras para gráficas
-  chart1: '#10b46c',
-  chart2: '#1de98b',
-  chart3: '#38bdf8',
-  chart4: '#a78bfa',
+  bgPrimary: '#ffffff',
+  bgSecondary: '#f8fafb',
+  bgCard: '#ffffff',
+  textPrimary: '#111827',
+  textSecondary: '#4b5563',
+  textMuted: '#9ca3af',
+  borderLight: '#e5e7eb',
+  emerald50: '#ecfdf5',
+  emerald100: '#d1fae5',
+  emerald200: '#a7f3d0',
+  emerald500: '#10b981',
+  emerald600: '#059669',
+  emerald700: '#047857',
+  emerald900: '#064e3b',
+  red: '#ef4444',
+  orange: '#f59e0b',
+  blue: '#3b82f6',
+  chart1: '#10b981',
+  chart2: '#059669',
+  chart3: '#3b82f6',
+  chart4: '#8b5cf6',
   chart5: '#f59e0b',
 }
 
 export const SCORE_COLORS = {
-  excellent: '#10b46c',
-  good:      '#3db87a',
+  excellent: '#059669',
+  good:      '#10b981',
   moderate:  '#f59e0b',
-  high_risk: '#f04040',
-}
-
-export const FONTS = {
-  display: "'Syne', sans-serif",
-  mono:    "'Space Mono', monospace",
-  body:    "'DM Sans', sans-serif",
+  high_risk: '#ef4444',
 }
 
 export function getScoreColor(score) {
@@ -61,8 +52,8 @@ export function getAlertColor(level) {
   switch (level) {
     case 'CRITICO':    return COLORS.red
     case 'ALERTA':     return COLORS.orange
-    case 'PRECAUCION': return COLORS.yellow
-    case 'OK':         return COLORS.gem
+    case 'PRECAUCION': return '#eab308'
+    case 'OK':         return COLORS.emerald500
     default:           return COLORS.textMuted
   }
 }

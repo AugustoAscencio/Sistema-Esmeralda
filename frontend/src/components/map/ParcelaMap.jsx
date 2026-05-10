@@ -1,252 +1,192 @@
 /**
- * ParcelaMap — MapLibre GL con dibujo de bbox y overlay NDVI
+ * ParcelaMap — MapLibre GL with WORKING bbox drawing
+ * Key fix: disables dragPan during drawing, uses refs for state in closures
  */
-
 import { useEffect, useRef, useState, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-export default function ParcelaMap({ onBboxSelected, bbox = null }) {
-  const mapContainer = useRef(null)
-  const map = useRef(null)
-  const [drawing, setDrawing] = useState(false)
-  const [startPoint, setStartPoint] = useState(null)
-  const [viewMode, setViewMode] = useState('ndvi') // ndvi | truecolor
+export default function ParcelaMap({ onBboxSelected, bbox: existingBbox }) {
+  const containerRef = useRef(null)
+  const mapRef = useRef(null)
+  const [mode, setMode] = useState('navigate') // navigate | firstClick | secondClick
+  const modeRef = useRef('navigate')
+  const firstPointRef = useRef(null)
+  const markersRef = useRef([])
   const [hasOverlay, setHasOverlay] = useState(false)
+  const [viewMode, setViewMode] = useState('ndvi')
+  const bboxRef = useRef(null)
+
+  // Sync refs
+  useEffect(() => { modeRef.current = mode }, [mode])
 
   useEffect(() => {
-    if (map.current) return
-
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
+    if (mapRef.current) return
+    const m = new maplibregl.Map({
+      container: containerRef.current,
       style: {
         version: 8,
-        sources: {
-          'osm': {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            attribution: '© OpenStreetMap'
-          }
-        },
-        layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }]
+        sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '&copy; OpenStreetMap' } },
+        layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
       },
       center: [-87.16, 12.66],
       zoom: 13,
     })
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-left')
+    m.addControl(new maplibregl.NavigationControl(), 'top-left')
+    mapRef.current = m
 
-    // Click handler
-    map.current.on('click', (e) => {
-      if (!drawing) return
+    m.on('click', (e) => {
+      const currentMode = modeRef.current
+      if (currentMode === 'navigate') return
 
-      if (!startPoint) {
-        setStartPoint([e.lngLat.lng, e.lngLat.lat])
+      const { lng, lat } = e.lngLat
 
+      if (currentMode === 'firstClick') {
+        firstPointRef.current = [lng, lat]
         // Add marker
-        new maplibregl.Marker({ color: '#1de98b' })
-          .setLngLat([e.lngLat.lng, e.lngLat.lat])
-          .addTo(map.current)
-      } else {
-        const bboxResult = [
-          Math.min(startPoint[0], e.lngLat.lng),
-          Math.min(startPoint[1], e.lngLat.lat),
-          Math.max(startPoint[0], e.lngLat.lng),
-          Math.max(startPoint[1], e.lngLat.lat),
-        ]
-        setDrawing(false)
-        setStartPoint(null)
+        const el = document.createElement('div')
+        el.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#10b981;border:2px solid #fff;box-shadow:0 0 8px rgba(16,185,129,0.5);'
+        const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(m)
+        markersRef.current.push(marker)
+        modeRef.current = 'secondClick'
+        setMode('secondClick')
+      } else if (currentMode === 'secondClick') {
+        const sp = firstPointRef.current
+        if (!sp) return
+        const bbox = [Math.min(sp[0], lng), Math.min(sp[1], lat), Math.max(sp[0], lng), Math.max(sp[1], lat)]
 
-        // Draw rectangle
-        drawBboxRect(bboxResult)
+        // Add second marker
+        const el = document.createElement('div')
+        el.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#10b981;border:2px solid #fff;box-shadow:0 0 8px rgba(16,185,129,0.5);'
+        const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(m)
+        markersRef.current.push(marker)
 
-        if (onBboxSelected) {
-          onBboxSelected(bboxResult)
-        }
+        // Reset mode
+        modeRef.current = 'navigate'
+        setMode('navigate')
+        firstPointRef.current = null
+        bboxRef.current = bbox
+        m.dragPan.enable()
+        m.getCanvas().style.cursor = ''
 
-        // Load NDVI overlay
-        loadOverlay(bboxResult, 'ndvi')
+        drawRect(m, bbox)
+        loadOverlay(m, bbox, 'ndvi')
+        if (onBboxSelected) onBboxSelected(bbox)
       }
     })
 
-    return () => {
-      if (map.current) map.current.remove()
-      map.current = null
+    // Show existing bbox if provided
+    if (existingBbox) {
+      m.on('load', () => {
+        drawRect(m, existingBbox)
+        bboxRef.current = existingBbox
+      })
     }
+
+    return () => { m.remove(); mapRef.current = null }
   }, [])
 
-  const drawBboxRect = (b) => {
-    const m = map.current
-    if (!m) return
-
-    // Remove existing
-    if (m.getSource('bbox-rect')) {
-      m.removeLayer('bbox-fill')
-      m.removeLayer('bbox-outline')
-      m.removeSource('bbox-rect')
-    }
-
-    m.addSource('bbox-rect', {
+  const drawRect = (m, b) => {
+    if (m.getSource('bbox-src')) { m.removeLayer('bbox-fill'); m.removeLayer('bbox-line'); m.removeSource('bbox-src') }
+    m.addSource('bbox-src', {
       type: 'geojson',
-      data: {
-        type: 'Feature',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[
-            [b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]], [b[0], b[1]]
-          ]]
-        }
-      }
+      data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]],[b[0],b[1]]]] } },
     })
-
-    m.addLayer({
-      id: 'bbox-fill',
-      type: 'fill',
-      source: 'bbox-rect',
-      paint: { 'fill-color': '#10b46c', 'fill-opacity': 0.08 }
-    })
-
-    m.addLayer({
-      id: 'bbox-outline',
-      type: 'line',
-      source: 'bbox-rect',
-      paint: {
-        'line-color': '#1de98b',
-        'line-width': 2,
-        'line-dasharray': [3, 2],
-      }
-    })
+    m.addLayer({ id: 'bbox-fill', type: 'fill', source: 'bbox-src', paint: { 'fill-color': '#10b981', 'fill-opacity': 0.08 } })
+    m.addLayer({ id: 'bbox-line', type: 'line', source: 'bbox-src', paint: { 'line-color': '#059669', 'line-width': 2.5, 'line-dasharray': [4, 2] } })
+    m.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 80, duration: 800 })
   }
 
-  const loadOverlay = async (b, mode) => {
-    const m = map.current
-    if (!m) return
-
-    const endpoint = mode === 'ndvi' ? 'ndvi-image' : 'true-color'
+  const loadOverlay = async (m, b, type) => {
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/v1/parcela/${endpoint}?bbox=${b.join(',')}`
-      )
-      if (!response.ok) return
-
-      const blob = await response.blob()
+      const endpoint = type === 'ndvi' ? 'ndvi-image' : 'true-color'
+      const res = await fetch(`http://localhost:8000/api/v1/parcela/${endpoint}?bbox=${b.join(',')}`)
+      if (!res.ok) return
+      const blob = await res.blob()
       const url = URL.createObjectURL(blob)
-
-      if (m.getSource('satellite-overlay')) {
-        m.removeLayer('satellite-layer')
-        m.removeSource('satellite-overlay')
-      }
-
-      m.addSource('satellite-overlay', {
-        type: 'image',
-        url,
-        coordinates: [
-          [b[0], b[3]], [b[2], b[3]],
-          [b[2], b[1]], [b[0], b[1]]
-        ]
-      })
-
-      m.addLayer({
-        id: 'satellite-layer',
-        type: 'raster',
-        source: 'satellite-overlay',
-        paint: { 'raster-opacity': 0.75, 'raster-fade-duration': 300 }
-      }, 'bbox-fill')
-
+      if (m.getSource('sat-overlay')) { m.removeLayer('sat-layer'); m.removeSource('sat-overlay') }
+      m.addSource('sat-overlay', { type: 'image', url, coordinates: [[b[0],b[3]],[b[2],b[3]],[b[2],b[1]],[b[0],b[1]]] })
+      m.addLayer({ id: 'sat-layer', type: 'raster', source: 'sat-overlay', paint: { 'raster-opacity': 0.7 } }, 'bbox-fill')
       setHasOverlay(true)
-    } catch (err) {
-      console.error('Error loading overlay:', err)
-    }
+    } catch {}
   }
 
-  const toggleViewMode = () => {
-    const newMode = viewMode === 'ndvi' ? 'truecolor' : 'ndvi'
-    setViewMode(newMode)
-    if (bbox) {
-      loadOverlay(bbox, newMode)
-    }
+  const startDrawing = useCallback(() => {
+    const m = mapRef.current
+    if (!m) return
+    // Clear old markers and layers
+    markersRef.current.forEach((mk) => mk.remove())
+    markersRef.current = []
+    if (m.getSource('bbox-src')) { m.removeLayer('bbox-fill'); m.removeLayer('bbox-line'); m.removeSource('bbox-src') }
+    if (m.getSource('sat-overlay')) { m.removeLayer('sat-layer'); m.removeSource('sat-overlay') }
+
+    firstPointRef.current = null
+    bboxRef.current = null
+    setHasOverlay(false)
+
+    // CRITICAL: disable drag so clicks register as clicks, not pans
+    m.dragPan.disable()
+    m.getCanvas().style.cursor = 'crosshair'
+    modeRef.current = 'firstClick'
+    setMode('firstClick')
+  }, [])
+
+  const cancelDrawing = useCallback(() => {
+    const m = mapRef.current
+    if (!m) return
+    m.dragPan.enable()
+    m.getCanvas().style.cursor = ''
+    modeRef.current = 'navigate'
+    setMode('navigate')
+    firstPointRef.current = null
+    markersRef.current.forEach((mk) => mk.remove())
+    markersRef.current = []
+  }, [])
+
+  const toggleOverlay = () => {
+    const next = viewMode === 'ndvi' ? 'truecolor' : 'ndvi'
+    setViewMode(next)
+    if (bboxRef.current && mapRef.current) loadOverlay(mapRef.current, bboxRef.current, next)
+  }
+
+  const btnBase = {
+    padding: '8px 16px', fontFamily: 'var(--font-sans)', fontSize: '0.8rem', fontWeight: 600,
+    borderRadius: 'var(--r-sm)', cursor: 'pointer', transition: 'all 0.15s', border: 'none',
+    boxShadow: 'var(--shadow-sm)',
   }
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div
-        ref={mapContainer}
-        style={{
-          width: '100%', height: '100%',
-          borderRadius: 'var(--radius-lg)',
-          cursor: drawing ? 'crosshair' : 'grab',
-        }}
-      />
+      <div ref={containerRef} style={{ width: '100%', height: '100%', borderRadius: 'var(--r-lg)' }} />
 
-      {/* Controls overlay */}
-      <div style={{
-        position: 'absolute', top: 12, right: 12,
-        display: 'flex', flexDirection: 'column', gap: '8px',
-        zIndex: 10,
-      }}>
-        <button
-          onClick={() => {
-            setDrawing(!drawing)
-            setStartPoint(null)
-          }}
-          style={{
-            padding: '10px 16px',
-            background: drawing ? 'var(--esmeralda-bright)' : 'rgba(15, 36, 23, 0.9)',
-            color: drawing ? 'var(--esmeralda-deep)' : 'var(--text-primary)',
-            border: '1px solid var(--esmeralda-gem)',
-            borderRadius: 'var(--radius-sm)',
-            fontFamily: 'var(--font-display)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            backdropFilter: 'blur(8px)',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          {drawing
-            ? (startPoint ? '📍 Clic segundo punto...' : '📍 Clic primer punto...')
-            : '✏️ Seleccionar parcela'}
-        </button>
-
+      {/* Controls */}
+      <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10 }}>
+        {mode === 'navigate' ? (
+          <button onClick={startDrawing} style={{ ...btnBase, background: '#fff', color: 'var(--emerald-600)', border: '1.5px solid var(--emerald-500)' }}>
+            Seleccionar parcela
+          </button>
+        ) : (
+          <button onClick={cancelDrawing} style={{ ...btnBase, background: 'var(--red)', color: '#fff' }}>
+            Cancelar
+          </button>
+        )}
         {hasOverlay && (
-          <button
-            onClick={toggleViewMode}
-            style={{
-              padding: '10px 16px',
-              background: 'rgba(15, 36, 23, 0.9)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--esmeralda-mid)',
-              borderRadius: 'var(--radius-sm)',
-              fontFamily: 'var(--font-display)',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              backdropFilter: 'blur(8px)',
-            }}
-          >
-            {viewMode === 'ndvi' ? '🌿 NDVI' : '📷 Color Real'}
+          <button onClick={toggleOverlay} style={{ ...btnBase, background: '#fff', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}>
+            {viewMode === 'ndvi' ? 'Ver Color Real' : 'Ver NDVI'}
           </button>
         )}
       </div>
 
-      {/* Drawing instruction */}
-      {drawing && (
+      {/* Status indicator */}
+      {mode !== 'navigate' && (
         <div style={{
-          position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-          padding: '10px 20px',
-          background: 'rgba(10, 26, 18, 0.9)',
-          border: '1px solid var(--esmeralda-gem)',
-          borderRadius: 'var(--radius-md)',
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.85rem',
-          color: 'var(--esmeralda-bright)',
-          backdropFilter: 'blur(8px)',
-          zIndex: 10,
-          whiteSpace: 'nowrap',
+          position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+          padding: '10px 24px', background: '#fff', border: '1.5px solid var(--emerald-200)',
+          borderRadius: 'var(--r-full)', boxShadow: 'var(--shadow-md)',
+          fontFamily: 'var(--font-sans)', fontSize: '0.85rem', fontWeight: 600,
+          color: 'var(--emerald-700)', whiteSpace: 'nowrap', zIndex: 10,
         }}>
-          {startPoint
-            ? '🎯 Haz clic en la esquina opuesta de tu parcela'
-            : '📍 Haz clic en una esquina de tu parcela'}
+          {mode === 'firstClick' ? 'Haz clic en una esquina de tu parcela' : 'Haz clic en la esquina opuesta'}
         </div>
       )}
     </div>

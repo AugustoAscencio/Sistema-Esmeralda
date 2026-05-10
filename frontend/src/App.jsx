@@ -7,6 +7,7 @@ import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import ParcelaView from './pages/ParcelaView'
 import FinancialPanel from './pages/FinancialPanel'
+import Herramientas from './pages/Herramientas'
 import Education from './pages/Education'
 import Methodology from './pages/Methodology'
 import AgentChat from './components/agent/AgentChat'
@@ -26,16 +27,15 @@ export default function App() {
   return (
     <>
       {!isLanding && <Navbar />}
-
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/parcela" element={<ParcelaView />} />
         <Route path="/financiero" element={<FinancialPanel />} />
+        <Route path="/herramientas" element={<Herramientas />} />
         <Route path="/educacion" element={<Education />} />
         <Route path="/metodologia" element={<Methodology />} />
       </Routes>
-
       {!isLanding && showAgent && <AgentChat />}
     </>
   )

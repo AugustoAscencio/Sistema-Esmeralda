@@ -1,24 +1,14 @@
-/**
- * NDVITimeline — Evolución NDVI histórico (30 días)
- */
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts'
-import { COLORS } from '../../styles/theme'
-
-const CustomTooltip = ({ active, payload, label }) => {
+const Tip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
+  const v = payload[0].value
   return (
-    <div style={{
-      background: 'rgba(10, 26, 18, 0.95)',
-      border: '1px solid var(--esmeralda-mid)',
-      borderRadius: '8px',
-      padding: '10px 14px',
-      fontFamily: 'var(--font-mono)',
-      fontSize: '0.75rem',
-    }}>
-      <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>{label}</div>
-      <div style={{ color: COLORS.bright, fontWeight: 700 }}>
-        NDVI: {payload[0].value.toFixed(3)}
+    <div style={{ background: '#022c22', border: '1.5px solid rgba(16,185,129,0.3)', borderRadius: '10px', padding: '10px 14px', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+      <div style={{ color: '#6ee7b7', marginBottom: '4px' }}>{label}</div>
+      <div style={{ color: v >= 0.5 ? '#34d399' : v >= 0.3 ? '#fbbf24' : '#f87171', fontWeight: 700, fontSize: '0.9rem' }}>NDVI: {v.toFixed(3)}</div>
+      <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6rem', marginTop: '2px' }}>
+        {v >= 0.6 ? 'Vegetacion saludable' : v >= 0.4 ? 'Aceptable' : v >= 0.2 ? 'Estres detectado' : 'Vegetacion danada'}
       </div>
     </div>
   )
@@ -26,60 +16,26 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function NDVITimeline({ data = [] }) {
   if (!data.length) return null
-
   return (
     <div className="card" style={{ padding: '20px' }}>
-      <h4 style={{
-        fontFamily: 'var(--font-display)',
-        fontSize: '0.95rem',
-        color: 'var(--text-primary)',
-        marginBottom: '16px',
-      }}>
-        📈 NDVI Histórico (30 días)
-      </h4>
-
+      <h4 style={{ fontSize: '0.9rem', marginBottom: '14px' }}>NDVI Historico</h4>
       <ResponsiveContainer width="100%" height={200}>
         <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
           <defs>
-            <linearGradient id="ndviGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={COLORS.gem} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={COLORS.gem} stopOpacity={0.02} />
+            <linearGradient id="ndviG2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+              <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(26, 61, 38, 0.4)" />
-          <XAxis
-            dataKey="date"
-            tick={{ fill: COLORS.textMuted, fontSize: 10, fontFamily: 'Space Mono' }}
-            tickFormatter={(val) => val.slice(5)}
-            axisLine={{ stroke: COLORS.mid }}
-          />
-          <YAxis
-            domain={[0, 1]}
-            tick={{ fill: COLORS.textMuted, fontSize: 10, fontFamily: 'Space Mono' }}
-            axisLine={{ stroke: COLORS.mid }}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={0.3} stroke={COLORS.red} strokeDasharray="5 5" label="" />
-          <ReferenceLine y={0.6} stroke={COLORS.gem} strokeDasharray="5 5" label="" />
-          <Area
-            type="monotone"
-            dataKey="ndvi"
-            stroke={COLORS.bright}
-            fill="url(#ndviGradient)"
-            strokeWidth={2}
-            dot={{ fill: COLORS.bright, r: 3, strokeWidth: 0 }}
-            activeDot={{ fill: COLORS.bright, r: 5, strokeWidth: 2, stroke: '#fff' }}
-          />
+          <CartesianGrid strokeDasharray="3 3" stroke="#d1fae5" />
+          <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10, fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => v.slice(5)} axisLine={{ stroke: '#a7f3d0' }} />
+          <YAxis domain={[0, 1]} tick={{ fill: '#6b7280', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: '#a7f3d0' }} />
+          <Tooltip content={<Tip />} />
+          <ReferenceLine y={0.3} stroke="#dc2626" strokeDasharray="5 5" strokeOpacity={0.6} label={{ value: 'Critico', fill: '#dc2626', fontSize: 10 }} />
+          <ReferenceLine y={0.6} stroke="#059669" strokeDasharray="5 5" strokeOpacity={0.6} label={{ value: 'Optimo', fill: '#059669', fontSize: 10 }} />
+          <Area type="monotone" dataKey="ndvi" stroke="#059669" fill="url(#ndviG2)" strokeWidth={3} dot={{ fill: '#059669', r: 3.5, strokeWidth: 2, stroke: '#d1fae5' }} activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }} />
         </AreaChart>
       </ResponsiveContainer>
-
-      <div style={{
-        display: 'flex', gap: '16px', marginTop: '8px',
-        fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)',
-      }}>
-        <span>🔴 {'<'} 0.3 — Crítico</span>
-        <span>🟢 {'>'} 0.6 — Excelente</span>
-      </div>
     </div>
   )
 }

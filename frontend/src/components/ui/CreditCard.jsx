@@ -1,130 +1,25 @@
-/**
- * CreditCard — Tarjeta de recomendación de microcrédito
- */
-
 export default function CreditCard({ credit = {} }) {
-  const isApproved = credit.recommendation === 'APROBADO' || credit.recommendation === 'CONDICIONAL'
-
+  const ok = credit.recommendation === 'APROBADO' || credit.recommendation === 'CONDICIONAL'
   return (
-    <div className="card card-glow" style={{
-      border: isApproved
-        ? '1px solid rgba(16, 180, 108, 0.3)'
-        : '1px solid rgba(240, 64, 64, 0.2)',
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: '16px',
-      }}>
-        <h4 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '1rem',
-          color: 'var(--text-primary)',
-          margin: 0,
-        }}>
-          💳 Microcrédito Paramétrico
-        </h4>
-        <span className={`badge ${isApproved ? 'badge-ok' : 'badge-danger'}`}>
-          {credit.recommendation || 'N/A'}
-        </span>
+    <div className={ok ? 'card-emerald' : 'card'} style={{ border: ok ? '2px solid var(--emerald-400)' : '2px solid #f87171' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+        <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Microcredito Parametrico</h4>
+        <span className={`badge ${ok ? 'badge-ok' : 'badge-danger'}`}>{credit.recommendation || 'N/A'}</span>
       </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr',
-        gap: '16px',
-      }}>
-        <div>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.65rem',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: '4px',
-          }}>
-            Monto Máximo
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+        {[
+          { label: 'Monto maximo', value: `$${credit.max_amount_usd || 0}`, sub: 'USD', color: ok ? 'var(--emerald-700)' : 'var(--text-muted)' },
+          { label: 'Tasa', value: `${credit.interest_rate_pct || 0}%`, sub: 'anual', color: 'var(--text-primary)' },
+          { label: 'Activado por', value: 'Satelite', sub: 'NDVI + Humedad', color: 'var(--blue)' },
+        ].map((m, i) => (
+          <div key={i}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px' }}>{m.label}</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: m.color }}>{m.value}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)' }}>{m.sub}</div>
           </div>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '1.4rem',
-            fontWeight: 800,
-            color: isApproved ? 'var(--esmeralda-bright)' : 'var(--text-muted)',
-          }}>
-            ${credit.max_amount_usd || 0}
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.65rem',
-            color: 'var(--text-muted)',
-          }}>
-            USD
-          </div>
-        </div>
-
-        <div>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.65rem',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: '4px',
-          }}>
-            Tasa Interés
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '1.4rem',
-            fontWeight: 800,
-            color: 'var(--text-primary)',
-          }}>
-            {credit.interest_rate_pct || 0}%
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.65rem',
-            color: 'var(--text-muted)',
-          }}>
-            anual
-          </div>
-        </div>
-
-        <div>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.65rem',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: '4px',
-          }}>
-            Activado por
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '1rem',
-            fontWeight: 700,
-            color: '#38bdf8',
-          }}>
-            🛰️ Satélite
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.65rem',
-            color: 'var(--text-muted)',
-          }}>
-            NDVI + Humedad
-          </div>
-        </div>
+        ))}
       </div>
-
-      {isApproved && (
-        <button className="btn btn-primary" style={{
-          width: '100%', marginTop: '16px',
-        }}>
-          Solicitar Microcrédito
-        </button>
-      )}
+      {ok && <button className="btn btn-primary w-full" style={{ marginTop: '20px' }}>Solicitar Microcredito</button>}
     </div>
   )
 }

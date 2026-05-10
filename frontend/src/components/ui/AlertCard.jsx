@@ -1,64 +1,28 @@
-/**
- * AlertCard — Tarjeta de alerta con nivel de severidad
- */
-
 import { getAlertColor } from '../../styles/theme'
 
-const LEVEL_ICONS = {
-  CRITICO: '🔴',
-  ALERTA: '🟠',
-  PRECAUCION: '🟡',
-  OK: '🟢',
-}
+const LABELS = { CRITICO: 'Critico', ALERTA: 'Alerta', PRECAUCION: 'Precaucion', OK: 'Normal' }
+const BG = { CRITICO: '#fee2e2', ALERTA: '#fff7ed', PRECAUCION: '#fef3c7', OK: 'var(--emerald-50)' }
+const BORDER = { CRITICO: '#f87171', ALERTA: '#fb923c', PRECAUCION: '#fbbf24', OK: 'var(--emerald-300)' }
+const TEXT = { CRITICO: '#991b1b', ALERTA: '#9a3412', PRECAUCION: '#92400e', OK: 'var(--emerald-800)' }
 
 export default function AlertCard({ alert }) {
   const color = getAlertColor(alert.level)
-
   return (
     <div style={{
-      background: 'var(--glass-bg)',
-      backdropFilter: 'var(--glass-blur)',
-      border: `1px solid ${color}33`,
-      borderLeft: `4px solid ${color}`,
-      borderRadius: 'var(--radius-md)',
-      padding: '16px 20px',
-      transition: 'all 0.3s ease',
+      background: BG[alert.level] || 'var(--bg-secondary)',
+      border: `2px solid ${BORDER[alert.level] || 'var(--border-light)'}`,
+      borderLeft: `5px solid ${color}`,
+      borderRadius: 'var(--r-md)', padding: '14px 18px',
+      boxShadow: 'var(--shadow-sm)',
+      transition: 'all 0.3s',
     }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px'
-      }}>
-        <span style={{ fontSize: '16px' }}>
-          {LEVEL_ICONS[alert.level] || '⚪'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 8px ${color}40` }} />
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, color: TEXT[alert.level], letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          {LABELS[alert.level] || alert.level}
         </span>
-        <span style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '0.7rem',
-          fontWeight: 700,
-          color,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-        }}>
-          {alert.level}
-        </span>
-        {alert.type && (
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.65rem',
-            color: 'var(--text-muted)',
-          }}>
-            • {alert.type}
-          </span>
-        )}
       </div>
-      <p style={{
-        fontFamily: 'var(--font-body)',
-        fontSize: '0.9rem',
-        color: 'var(--text-primary)',
-        lineHeight: 1.5,
-        margin: 0,
-      }}>
-        {alert.message}
-      </p>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{alert.message}</p>
     </div>
   )
 }
