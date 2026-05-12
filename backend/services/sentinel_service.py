@@ -12,10 +12,8 @@ from datetime import datetime, timedelta
 
 TOKEN_URL    = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 PROCESS_URL  = "https://sh.dataspace.copernicus.eu/api/v1/process"
-
-from config import CDSE_CLIENT_ID, CDSE_CLIENT_SECRET
-CLIENT_ID = CDSE_CLIENT_ID
-CLIENT_SECRET = CDSE_CLIENT_SECRET
+CLIENT_ID    = os.getenv("CDSE_CLIENT_ID", "sh-b97f586e-7273-4e99-b6b5-f08fa43bde66")
+CLIENT_SECRET = os.getenv("CDSE_CLIENT_SECRET", "Vb2VXkMZMgAgDNhuWzN8PgURAYV41arK")
 
 # ── Cache simple en memoria (TTL 1 hora) ──
 _token_cache = {"token": None, "expires": 0}

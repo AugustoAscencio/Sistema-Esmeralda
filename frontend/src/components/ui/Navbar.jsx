@@ -1,15 +1,35 @@
 /**
- * Navbar v4 — Green gradient header, high contrast
+ * Navbar v5 — Green gradient header, high contrast, mobile bottom nav with SVG icons
  */
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/appStore'
 
 const NAV = [
-  { path: '/dashboard', label: 'Panel' },
-  { path: '/parcela', label: 'Parcela' },
-  { path: '/financiero', label: 'Finanzas' },
-  { path: '/herramientas', label: 'Herramientas' },
-  { path: '/educacion', label: 'Aprender' },
+  { path: '/dashboard', label: 'Panel', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+    </svg>
+  )},
+  { path: '/parcela', label: 'Parcela', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+    </svg>
+  )},
+  { path: '/financiero', label: 'Finanzas', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+    </svg>
+  )},
+  { path: '/herramientas', label: 'Herramientas', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    </svg>
+  )},
+  { path: '/educacion', label: 'Aprender', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </svg>
+  )},
 ]
 
 export default function Navbar() {
@@ -71,7 +91,8 @@ export default function Navbar() {
       {isMobile && (
         <nav style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
-          display: 'flex', justifyContent: 'space-around', height: '60px',
+          display: 'flex', justifyContent: 'space-around', alignItems: 'stretch',
+          height: '64px',
           background: 'linear-gradient(135deg, #022c22, #064e3b)',
           borderTop: '2px solid rgba(16,185,129,0.3)',
           paddingBottom: 'env(safe-area-inset-bottom)',
@@ -82,21 +103,36 @@ export default function Navbar() {
             return (
               <button key={item.path} onClick={() => nav(item.path)} style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: '3px', padding: '4px 8px', background: 'transparent', border: 'none',
+                gap: '2px', padding: '4px 6px', background: 'transparent', border: 'none',
                 color: active ? '#34d399' : 'rgba(255,255,255,0.4)',
-                fontSize: '0.6rem', fontFamily: 'var(--font-sans)', fontWeight: active ? 700 : 500, cursor: 'pointer',
+                fontSize: '0.55rem', fontFamily: 'var(--font-sans)', fontWeight: active ? 700 : 500,
+                cursor: 'pointer', transition: 'all 0.2s',
+                flex: 1, minWidth: 0,
               }}>
-                <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: active ? '#34d399' : 'transparent', boxShadow: active ? '0 0 8px rgba(52,211,153,0.6)' : 'none' }} />
-                {item.label}
+                <div style={{
+                  opacity: active ? 1 : 0.5,
+                  transition: 'opacity 0.2s',
+                  transform: active ? 'scale(1.15)' : 'scale(1)',
+                }}>
+                  {item.icon}
+                </div>
+                <span style={{ lineHeight: 1 }}>{item.label}</span>
+                {active && (
+                  <div style={{
+                    width: '4px', height: '4px', borderRadius: '50%', background: '#34d399',
+                    boxShadow: '0 0 8px rgba(52,211,153,0.6)', marginTop: '1px',
+                  }} />
+                )}
               </button>
             )
           })}
           <button onClick={toggleAgent} style={{
-            width: '40px', height: '40px', borderRadius: '50%', alignSelf: 'center',
+            width: '44px', height: '44px', borderRadius: '50%', alignSelf: 'center',
             background: showAgent ? '#10b981' : 'rgba(16,185,129,0.15)',
             border: '2px solid rgba(16,185,129,0.4)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: showAgent ? '0 0 16px rgba(16,185,129,0.4)' : 'none',
+            flexShrink: 0,
           }}>
             <span style={{ fontSize: '11px', fontWeight: 800, color: showAgent ? '#022c22' : '#34d399' }}>IA</span>
           </button>

@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from routes.parcela import router as parcela_router
 from routes.financial import router as financial_router
 from routes.agent import router as agent_router
+from routes.prediction import router as prediction_router
 
 app = FastAPI(
     title="Sistema Esmeralda API",
@@ -30,6 +31,7 @@ app.add_middleware(
 app.include_router(parcela_router, prefix="/api/v1/parcela", tags=["Parcela"])
 app.include_router(financial_router, prefix="/api/v1/financial", tags=["Financiero"])
 app.include_router(agent_router, prefix="/api/v1/agent", tags=["Agente IA"])
+app.include_router(prediction_router, prefix="/api/v1/predict", tags=["Predicción"])
 
 
 @app.get("/", tags=["Health"])
